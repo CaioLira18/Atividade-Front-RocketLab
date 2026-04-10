@@ -1,4 +1,20 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from app.schemas.ProdutoSchema import ProdutoSchema
+from app.schemas.ProdutoUpdate import ProdutoUpdate
+from app.schemas.ConsumidorSchema import ConsumidorSchema
+from app.schemas.VendedorSchema import VendedorSchema
+from app.schemas.PedidoSchema import PedidoSchema
+from app.schemas.ItemPedidoSchema import ItemPedidoSchema
+from app.schemas.AvaliacaoPedidoSchema import AvaliacaoPedidoSchema
+from app.schemas.CategoriaImagemSchema import CategoriaImagemSchema
+from app.database import SessionLocal
+
+from app.models import (
+    Produto, Consumidor, Vendedor,
+    Pedido, ItemPedido, AvaliacaoPedido, CategoriaImagem
+)
 
 app = FastAPI(
     title="Sistema de Compras Online",
@@ -6,12 +22,254 @@ app = FastAPI(
     version="1.0.0",
 )
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
+
+# =========================
+# 🏥 HEALTH CHECK
+# =========================
 @app.get("/", tags=["Health"])
 def health_check():
     return {"status": "ok", "message": "API rodando com sucesso!"}
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+# =========================
+# 📦 PRODUTOS
+# =========================
+@app.get("/produtos", response_model=List[ProdutoSchema])
+def get_produtos(db: Session = Depends(get_db)):
+    # Join Produto com CategoriaImagem pela categoria
+    resultados = (
+        db.query(Produto, CategoriaImagem.link)
+        .outerjoin(CategoriaImagem, Produto.categoria_produto == CategoriaImagem.categoria)
+        .slice(0, 10).all()
+    )
+
+    produtos = []
+    for produto, link in resultados:
+        dados = ProdutoSchema.model_validate(produto)
+        dados.link_imagem = link
+        produtos.append(dados)
+
+    return produtos
+
+@app.get("/produtos/{id}", response_model=ProdutoSchema)
+def get_produto(id: str, db: Session = Depends(get_db)):
+    resultado = (
+        db.query(Produto, CategoriaImagem.link)
+        .outerjoin(CategoriaImagem, Produto.categoria_produto == CategoriaImagem.categoria)
+        .filter(Produto.id_produto == id)
+        .first()
+    )
+    if not resultado:
+        raise HTTPException(404, "Produto não encontrado")
+    produto, link = resultado
+    dados = ProdutoSchema.model_validate(produto)
+    dados.link_imagem = link
+    return dados
+
+@app.post("/produtos")
+def create_produto(produto: ProdutoUpdate, db: Session = Depends(get_db)):
+    novo = Produto(**produto.model_dump())
+    db.add(novo)
+    db.commit()
+    db.refresh(novo)
+    return novo
+
+@app.put("/produtos/{id}")
+def update_produto(id: str, dados: ProdutoUpdate, db: Session = Depends(get_db)):
+    obj = db.query(Produto).filter(Produto.id_produto == id).first()
+    if not obj:
+        raise HTTPException(404, "Produto não encontrado")
+    for k, v in dados.model_dump(exclude_unset=True).items():
+        setattr(obj, k, v)
+    db.commit()
+    return obj
+
+@app.delete("/produtos/{id}")
+def delete_produto(id: str, db: Session = Depends(get_db)):
+    obj = db.query(Produto).filter(Produto.id_produto == id).first()
+    if not obj:
+        raise HTTPException(404, "Produto não encontrado")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
+
+
+# =========================
+# 👤 CONSUMIDORES
+# =========================
+@app.get("/consumidores", response_model=List[ConsumidorSchema])
+def get_consumidores(db: Session = Depends(get_db)):
+    return db.query(Consumidor).all()
+
+@app.post("/consumidores")
+def create_consumidor(dados: ConsumidorSchema, db: Session = Depends(get_db)):
+    novo = Consumidor(**dados.model_dump())
+    db.add(novo)
+    db.commit()
+    return novo
+
+@app.put("/consumidores/{id}")
+def update_consumidor(id: str, dados: ConsumidorSchema, db: Session = Depends(get_db)):
+    obj = db.query(Consumidor).filter(Consumidor.id_consumidor == id).first()
+    if not obj:
+        raise HTTPException(404, "Consumidor não encontrado")
+    for k, v in dados.model_dump().items():
+        setattr(obj, k, v)
+    db.commit()
+    return obj
+
+@app.delete("/consumidores/{id}")
+def delete_consumidor(id: str, db: Session = Depends(get_db)):
+    obj = db.query(Consumidor).filter(Consumidor.id_consumidor == id).first()
+    if not obj:
+        raise HTTPException(404, "Consumidor não encontrado")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
+
+
+# =========================
+# 🧑‍💼 VENDEDORES
+# =========================
+@app.get("/vendedores", response_model=List[VendedorSchema])
+def get_vendedores(db: Session = Depends(get_db)):
+    return db.query(Vendedor).all()
+
+@app.post("/vendedores")
+def create_vendedor(dados: VendedorSchema, db: Session = Depends(get_db)):
+    novo = Vendedor(**dados.model_dump())
+    db.add(novo)
+    db.commit()
+    return novo
+
+@app.put("/vendedores/{id}")
+def update_vendedor(id: str, dados: VendedorSchema, db: Session = Depends(get_db)):
+    obj = db.query(Vendedor).filter(Vendedor.id_vendedor == id).first()
+    if not obj:
+        raise HTTPException(404, "Vendedor não encontrado")
+    for k, v in dados.model_dump().items():
+        setattr(obj, k, v)
+    db.commit()
+    return obj
+
+@app.delete("/vendedores/{id}")
+def delete_vendedor(id: str, db: Session = Depends(get_db)):
+    obj = db.query(Vendedor).filter(Vendedor.id_vendedor == id).first()
+    if not obj:
+        raise HTTPException(404, "Vendedor não encontrado")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
+
+
+# =========================
+# 📦 PEDIDOS
+# =========================
+@app.get("/pedidos", response_model=List[PedidoSchema])
+def get_pedidos(db: Session = Depends(get_db)):
+    return db.query(Pedido).all()
+
+@app.post("/pedidos")
+def create_pedido(dados: PedidoSchema, db: Session = Depends(get_db)):
+    novo = Pedido(**dados.model_dump())
+    db.add(novo)
+    db.commit()
+    return novo
+
+@app.put("/pedidos/{id}")
+def update_pedido(id: str, dados: PedidoSchema, db: Session = Depends(get_db)):
+    obj = db.query(Pedido).filter(Pedido.id_pedido == id).first()
+    if not obj:
+        raise HTTPException(404, "Pedido não encontrado")
+    for k, v in dados.model_dump().items():
+        setattr(obj, k, v)
+    db.commit()
+    return obj
+
+@app.delete("/pedidos/{id}")
+def delete_pedido(id: str, db: Session = Depends(get_db)):
+    obj = db.query(Pedido).filter(Pedido.id_pedido == id).first()
+    if not obj:
+        raise HTTPException(404, "Pedido não encontrado")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
+
+
+# =========================
+# 🧾 ITENS PEDIDO
+# =========================
+@app.get("/itens", response_model=List[ItemPedidoSchema])
+def get_itens(db: Session = Depends(get_db)):
+    return db.query(ItemPedido).all()
+
+@app.post("/itens")
+def create_item(dados: ItemPedidoSchema, db: Session = Depends(get_db)):
+    novo = ItemPedido(**dados.model_dump())
+    db.add(novo)
+    db.commit()
+    return novo
+
+@app.delete("/itens/{id}")
+def delete_item(id: int, db: Session = Depends(get_db)):
+    obj = db.query(ItemPedido).filter(ItemPedido.id == id).first()
+    if not obj:
+        raise HTTPException(404, "Item não encontrado")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
+
+
+# =========================
+# ⭐ AVALIAÇÕES
+# =========================
+@app.get("/avaliacoes", response_model=List[AvaliacaoPedidoSchema])
+def get_avaliacoes(db: Session = Depends(get_db)):
+    return db.query(AvaliacaoPedido).all()
+
+@app.post("/avaliacoes")
+def create_avaliacao(dados: AvaliacaoPedidoSchema, db: Session = Depends(get_db)):
+    novo = AvaliacaoPedido(**dados.model_dump())
+    db.add(novo)
+    db.commit()
+    return novo
+
+@app.delete("/avaliacoes/{id}")
+def delete_avaliacao(id: str, db: Session = Depends(get_db)):
+    obj = db.query(AvaliacaoPedido).filter(AvaliacaoPedido.id_avaliacao == id).first()
+    if not obj:
+        raise HTTPException(404, "Avaliação não encontrada")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
+
+
+# =========================
+# 🖼️ CATEGORIAS IMAGENS
+# =========================
+@app.get("/categorias-imagens", response_model=List[CategoriaImagemSchema])
+def get_categorias(db: Session = Depends(get_db)):
+    return db.query(CategoriaImagem).all()
+
+@app.post("/categorias-imagens")
+def create_categoria(dados: CategoriaImagemSchema, db: Session = Depends(get_db)):
+    novo = CategoriaImagem(**dados.model_dump())
+    db.add(novo)
+    db.commit()
+    return novo
+
+@app.delete("/categorias-imagens/{categoria}")
+def delete_categoria(categoria: str, db: Session = Depends(get_db)):
+    obj = db.query(CategoriaImagem).filter(CategoriaImagem.categoria == categoria).first()
+    if not obj:
+        raise HTTPException(404, "Categoria não encontrada")
+    db.delete(obj)
+    db.commit()
+    return {"msg": "Deletado"}
