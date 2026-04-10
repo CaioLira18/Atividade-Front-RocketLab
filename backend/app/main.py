@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.schemas.ProdutoSchema import ProdutoSchema
@@ -42,20 +42,23 @@ def health_check():
 # 📦 PRODUTOS
 # =========================
 @app.get("/produtos", response_model=List[ProdutoSchema])
-def get_produtos(db: Session = Depends(get_db)):
-    # Join Produto com CategoriaImagem pela categoria
+def get_produtos(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+):
     resultados = (
         db.query(Produto, CategoriaImagem.link)
         .outerjoin(CategoriaImagem, Produto.categoria_produto == CategoriaImagem.categoria)
-        .slice(0, 10).all()
+        .limit(limit)
+        .offset(offset)
+        .all()
     )
-
     produtos = []
     for produto, link in resultados:
         dados = ProdutoSchema.model_validate(produto)
         dados.link_imagem = link
         produtos.append(dados)
-
     return produtos
 
 @app.get("/produtos/{id}", response_model=ProdutoSchema)
@@ -105,8 +108,12 @@ def delete_produto(id: str, db: Session = Depends(get_db)):
 # 👤 CONSUMIDORES
 # =========================
 @app.get("/consumidores", response_model=List[ConsumidorSchema])
-def get_consumidores(db: Session = Depends(get_db)):
-    return db.query(Consumidor).all()
+def get_consumidores(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    return db.query(Consumidor).limit(limit).offset(offset).all()
 
 @app.post("/consumidores")
 def create_consumidor(dados: ConsumidorSchema, db: Session = Depends(get_db)):
@@ -139,8 +146,12 @@ def delete_consumidor(id: str, db: Session = Depends(get_db)):
 # 🧑‍💼 VENDEDORES
 # =========================
 @app.get("/vendedores", response_model=List[VendedorSchema])
-def get_vendedores(db: Session = Depends(get_db)):
-    return db.query(Vendedor).all()
+def get_vendedores(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    return db.query(Vendedor).limit(limit).offset(offset).all()
 
 @app.post("/vendedores")
 def create_vendedor(dados: VendedorSchema, db: Session = Depends(get_db)):
@@ -173,8 +184,12 @@ def delete_vendedor(id: str, db: Session = Depends(get_db)):
 # 📦 PEDIDOS
 # =========================
 @app.get("/pedidos", response_model=List[PedidoSchema])
-def get_pedidos(db: Session = Depends(get_db)):
-    return db.query(Pedido).all()
+def get_pedidos(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    return db.query(Pedido).limit(limit).offset(offset).all()
 
 @app.post("/pedidos")
 def create_pedido(dados: PedidoSchema, db: Session = Depends(get_db)):
@@ -207,8 +222,12 @@ def delete_pedido(id: str, db: Session = Depends(get_db)):
 # 🧾 ITENS PEDIDO
 # =========================
 @app.get("/itens", response_model=List[ItemPedidoSchema])
-def get_itens(db: Session = Depends(get_db)):
-    return db.query(ItemPedido).all()
+def get_itens(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    return db.query(ItemPedido).limit(limit).offset(offset).all()
 
 @app.post("/itens")
 def create_item(dados: ItemPedidoSchema, db: Session = Depends(get_db)):
@@ -231,8 +250,12 @@ def delete_item(id: int, db: Session = Depends(get_db)):
 # ⭐ AVALIAÇÕES
 # =========================
 @app.get("/avaliacoes", response_model=List[AvaliacaoPedidoSchema])
-def get_avaliacoes(db: Session = Depends(get_db)):
-    return db.query(AvaliacaoPedido).all()
+def get_avaliacoes(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    return db.query(AvaliacaoPedido).limit(limit).offset(offset).all()
 
 @app.post("/avaliacoes")
 def create_avaliacao(dados: AvaliacaoPedidoSchema, db: Session = Depends(get_db)):
