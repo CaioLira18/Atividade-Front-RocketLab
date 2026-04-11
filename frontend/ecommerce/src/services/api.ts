@@ -2,6 +2,14 @@ import type { Produto, ProdutoUpdate, Avaliacao, ItemPedido } from '../types'
 
 const BASE_URL = 'http://localhost:8000'
 
+export const getPrecoProduto = (id: string) =>
+  request<{
+    preco_medio: number | null
+    preco_min: number | null
+    preco_max: number | null
+    total_vendas: number
+  }>(`/produtos/${id}/preco`)
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },

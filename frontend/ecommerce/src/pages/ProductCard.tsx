@@ -67,10 +67,12 @@ export default function ProductCard({ produto }: Props) {
         </p>
 
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-stone-600 text-xs font-mono truncate max-w-[120px]">
-            #{produto.id_produto.slice(0, 8)}
+          <span className="text-amber-400 text-sm font-semibold">
+            {produto.preco_medio
+              ? produto.preco_medio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+              : '—'}
           </span>
-          <span className="text-amber-400 text-xs font-medium group-hover:translate-x-1 transition-transform inline-block">
+          <span className="text-stone-500 text-xs font-medium group-hover:text-amber-400 group-hover:translate-x-1 transition-all inline-block">
             Ver detalhes →
           </span>
         </div>

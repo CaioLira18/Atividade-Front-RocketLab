@@ -11,6 +11,7 @@ from app.schemas.AvaliacaoPedidoSchema import AvaliacaoPedidoSchema
 from app.schemas.CategoriaImagemSchema import CategoriaImagemSchema
 from app.database import SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
 
 from app.models import (
     Produto, Consumidor, Vendedor,
@@ -57,18 +58,59 @@ def get_produtos(
     offset: int = Query(default=0, ge=0),
 ):
     resultados = (
-        db.query(Produto, CategoriaImagem.link)
+        db.query(Produto, CategoriaImagem.link, func.avg(ItemPedido.preco_BRL).label("preco_medio"))
         .outerjoin(CategoriaImagem, Produto.categoria_produto == CategoriaImagem.categoria)
+        .outerjoin(ItemPedido, Produto.id_produto == ItemPedido.id_produto)
+        .group_by(Produto.id_produto)
         .limit(limit)
         .offset(offset)
         .all()
     )
     produtos = []
-    for produto, link in resultados:
+    for produto, link, preco_medio in resultados:
         dados = ProdutoSchema.model_validate(produto)
         dados.link_imagem = link
+        dados.preco_medio = round(preco_medio, 2) if preco_medio else None
         produtos.append(dados)
     return produtos
+
+@app.get("/produtos/{id}/preco")
+def get_preco_produto(id: str, db: Session = Depends(get_db)):
+    resultado = (
+        db.query(
+            func.avg(ItemPedido.preco_BRL).label("preco_medio"),
+            func.min(ItemPedido.preco_BRL).label("preco_min"),
+            func.max(ItemPedido.preco_BRL).label("preco_max"),
+            func.count(ItemPedido.id_pedido).label("total_vendas"),
+        )
+        .filter(ItemPedido.id_produto == id)
+        .first()
+    )
+    return {
+        "preco_medio": round(resultado.preco_medio, 2) if resultado.preco_medio else None,
+        "preco_min": resultado.preco_min,
+        "preco_max": resultado.preco_max,
+        "total_vendas": resultado.total_vendas,
+    }
+    
+@app.get("/produtos/{id}/preco")
+def get_preco_produto(id: str, db: Session = Depends(get_db)):
+    resultado = (
+        db.query(
+            func.avg(ItemPedido.preco_BRL).label("preco_medio"),
+            func.min(ItemPedido.preco_BRL).label("preco_min"),
+            func.max(ItemPedido.preco_BRL).label("preco_max"),
+            func.count(ItemPedido.id_pedido).label("total_vendas"),
+        )
+        .filter(ItemPedido.id_produto == id)
+        .first()
+    )
+    return {
+        "preco_medio": round(resultado.preco_medio, 2) if resultado.preco_medio else None,
+        "preco_min": resultado.preco_min,
+        "preco_max": resultado.preco_max,
+        "total_vendas": resultado.total_vendas,
+    }
 
 @app.get("/produtos/{id}", response_model=ProdutoSchema)
 def get_produto(id: str, db: Session = Depends(get_db)):

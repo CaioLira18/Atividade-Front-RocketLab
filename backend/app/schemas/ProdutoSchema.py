@@ -9,7 +9,8 @@ class ProdutoSchema(BaseModel):
     comprimento_centimetros: Optional[float] = None
     altura_centimetros: Optional[float] = None
     largura_centimetros: Optional[float] = None
-    link_imagem: Optional[str] = None 
+    preco_medio: Optional[float] = None
+    link_imagem: Optional[str] = None
 
     class Config:
         from_attributes = True

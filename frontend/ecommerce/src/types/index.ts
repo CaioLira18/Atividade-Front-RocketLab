@@ -7,6 +7,7 @@ export interface Produto {
   altura_centimetros?: number
   largura_centimetros?: number
   link_imagem?: string
+  preco_medio?: number
 }
 
 export interface ProdutoUpdate {
