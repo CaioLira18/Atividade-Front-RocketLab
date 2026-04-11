@@ -10,7 +10,7 @@ class ProdutoSchema(BaseModel):
     altura_centimetros: Optional[float] = None
     largura_centimetros: Optional[float] = None
     preco_medio: Optional[float] = None
-    link_imagem: Optional[str] = None
+    imagem_url: Optional[str] = None
 
     class Config:
         from_attributes = True

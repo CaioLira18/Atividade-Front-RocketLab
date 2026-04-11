@@ -1,6 +1,9 @@
+import uuid
 from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from sqlalchemy import func
+from typing import List
 from app.schemas.ProdutoSchema import ProdutoSchema
 from app.schemas.ProdutoUpdate import ProdutoUpdate
 from app.schemas.ConsumidorSchema import ConsumidorSchema
@@ -10,8 +13,6 @@ from app.schemas.ItemPedidoSchema import ItemPedidoSchema
 from app.schemas.AvaliacaoPedidoSchema import AvaliacaoPedidoSchema
 from app.schemas.CategoriaImagemSchema import CategoriaImagemSchema
 from app.database import SessionLocal
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func
 
 from app.models import (
     Produto, Consumidor, Vendedor,
@@ -26,11 +27,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()
@@ -56,23 +57,29 @@ def get_produtos(
     db: Session = Depends(get_db),
     limit: int = Query(default=20, le=100),
     offset: int = Query(default=0, ge=0),
+    busca: str = Query(default=""),
 ):
-    resultados = (
+    query = (
         db.query(Produto, CategoriaImagem.link, func.avg(ItemPedido.preco_BRL).label("preco_medio"))
         .outerjoin(CategoriaImagem, Produto.categoria_produto == CategoriaImagem.categoria)
         .outerjoin(ItemPedido, Produto.id_produto == ItemPedido.id_produto)
         .group_by(Produto.id_produto)
-        .limit(limit)
-        .offset(offset)
-        .all()
     )
+    if busca:
+        query = query.filter(Produto.nome_produto.ilike(f"%{busca}%"))
+
+    resultados = query.limit(limit).offset(offset).all()
+
     produtos = []
-    for produto, link, preco_medio in resultados:
+    for produto, link_categoria, preco_medio in resultados:
         dados = ProdutoSchema.model_validate(produto)
-        dados.link_imagem = link
+        # Usa imagem própria do produto; se não tiver, usa imagem da categoria
+        if not dados.imagem_url:
+            dados.imagem_url = link_categoria
         dados.preco_medio = round(preco_medio, 2) if preco_medio else None
         produtos.append(dados)
     return produtos
+
 
 @app.get("/produtos/{id}/preco")
 def get_preco_produto(id: str, db: Session = Depends(get_db)):
@@ -92,25 +99,21 @@ def get_preco_produto(id: str, db: Session = Depends(get_db)):
         "preco_max": resultado.preco_max,
         "total_vendas": resultado.total_vendas,
     }
-    
-@app.get("/produtos/{id}/preco")
-def get_preco_produto(id: str, db: Session = Depends(get_db)):
-    resultado = (
-        db.query(
-            func.avg(ItemPedido.preco_BRL).label("preco_medio"),
-            func.min(ItemPedido.preco_BRL).label("preco_min"),
-            func.max(ItemPedido.preco_BRL).label("preco_max"),
-            func.count(ItemPedido.id_pedido).label("total_vendas"),
-        )
+
+
+@app.get("/produtos/{id}/avaliacoes", response_model=List[AvaliacaoPedidoSchema])
+def get_avaliacoes_produto(id: str, db: Session = Depends(get_db)):
+    pedido_ids = (
+        db.query(ItemPedido.id_pedido)
         .filter(ItemPedido.id_produto == id)
-        .first()
+        .subquery()
     )
-    return {
-        "preco_medio": round(resultado.preco_medio, 2) if resultado.preco_medio else None,
-        "preco_min": resultado.preco_min,
-        "preco_max": resultado.preco_max,
-        "total_vendas": resultado.total_vendas,
-    }
+    return (
+        db.query(AvaliacaoPedido)
+        .filter(AvaliacaoPedido.id_pedido.in_(pedido_ids))
+        .all()
+    )
+
 
 @app.get("/produtos/{id}", response_model=ProdutoSchema)
 def get_produto(id: str, db: Session = Depends(get_db)):
@@ -122,18 +125,33 @@ def get_produto(id: str, db: Session = Depends(get_db)):
     )
     if not resultado:
         raise HTTPException(404, "Produto não encontrado")
-    produto, link = resultado
+    produto, link_categoria = resultado
     dados = ProdutoSchema.model_validate(produto)
-    dados.link_imagem = link
+    # Usa imagem própria do produto; se não tiver, usa imagem da categoria
+    if not dados.imagem_url:
+        dados.imagem_url = link_categoria
     return dados
 
-@app.post("/produtos")
+
+@app.post("/produtos", response_model=ProdutoSchema)
 def create_produto(produto: ProdutoUpdate, db: Session = Depends(get_db)):
-    novo = Produto(**produto.model_dump())
+    novo = Produto(
+        id_produto=uuid.uuid4().hex,
+        **produto.model_dump(exclude_unset=True)
+    )
     db.add(novo)
     db.commit()
     db.refresh(novo)
-    return novo
+    # Retorna com imagem da categoria se não tiver própria
+    dados = ProdutoSchema.model_validate(novo)
+    if not dados.imagem_url:
+        cat_img = db.query(CategoriaImagem).filter(
+            CategoriaImagem.categoria == novo.categoria_produto
+        ).first()
+        if cat_img:
+            dados.imagem_url = cat_img.link
+    return dados
+
 
 @app.put("/produtos/{id}")
 def update_produto(id: str, dados: ProdutoUpdate, db: Session = Depends(get_db)):
@@ -144,6 +162,7 @@ def update_produto(id: str, dados: ProdutoUpdate, db: Session = Depends(get_db))
         setattr(obj, k, v)
     db.commit()
     return obj
+
 
 @app.delete("/produtos/{id}")
 def delete_produto(id: str, db: Session = Depends(get_db)):

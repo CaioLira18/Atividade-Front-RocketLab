@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { Produto } from '../types/'
-import ProductCard from '../pages/ProductCard'
-import { getProduto, getProdutos } from '../services/api'
+import { getProdutos } from '../services/api'
+import type { Produto } from '../types'
+import ProductCard from './ProductCard'
 
 const LIMIT = 20
 
@@ -22,6 +22,7 @@ export default function Home() {
       else setLoadingMore(true)
 
       const data = await getProdutos(LIMIT, offset)
+
       if (reset) {
         setProdutos(data)
         setPage(1)
@@ -38,8 +39,15 @@ export default function Home() {
     }
   }, [page])
 
+  // Recarrega sempre que a página recebe foco (volta do formulário)
   useEffect(() => {
     fetchProdutos(true)
+  }, [])
+
+  useEffect(() => {
+    const onFocus = () => fetchProdutos(true)
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [])
 
   const categorias = [...new Set(produtos.map(p => p.categoria_produto))].sort()
@@ -90,6 +98,15 @@ export default function Home() {
                 <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
               ))}
             </select>
+            <button
+              onClick={() => fetchProdutos(true)}
+              className="px-4 py-3 bg-stone-900 border border-stone-700 text-stone-400 rounded-lg hover:border-amber-400 hover:text-amber-400 transition-colors"
+              title="Atualizar lista"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -130,7 +147,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Load more */}
             {hasMore && !busca && !categoria && (
               <div className="mt-10 flex justify-center">
                 <button

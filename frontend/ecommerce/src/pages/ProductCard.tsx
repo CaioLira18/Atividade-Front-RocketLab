@@ -34,9 +34,9 @@ export default function ProductCard({ produto }: Props) {
     >
       {/* Imagem */}
       <div className="relative h-48 bg-stone-800 overflow-hidden">
-        {produto.link_imagem ? (
+        {produto.imagem_url ? (
           <img
-            src={produto.link_imagem}
+            src={produto.imagem_url}
             alt={produto.nome_produto}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => {

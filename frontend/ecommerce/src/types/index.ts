@@ -6,7 +6,7 @@ export interface Produto {
   comprimento_centimetros?: number
   altura_centimetros?: number
   largura_centimetros?: number
-  link_imagem?: string
+  imagem_url?: string
   preco_medio?: number
 }
 
@@ -17,6 +17,7 @@ export interface ProdutoUpdate {
   comprimento_centimetros?: number
   altura_centimetros?: number
   largura_centimetros?: number
+  imagem_url?: string
 }
 
 export interface Avaliacao {

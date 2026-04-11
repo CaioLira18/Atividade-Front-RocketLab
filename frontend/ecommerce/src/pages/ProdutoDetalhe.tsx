@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getProduto, getAvaliacoes, getItens, deleteProduto } from '../services/api'
-import type { Produto, Avaliacao, ItemPedido } from '../types'
+import { getProduto, getPrecoProduto, getAvaliacoesProduto, deleteProduto } from '../services/api'
+import type { Produto, Avaliacao } from '../types'
 
 function StarRating({ value }: { value: number }) {
   return (
@@ -9,7 +9,7 @@ function StarRating({ value }: { value: number }) {
       {[1, 2, 3, 4, 5].map(i => (
         <svg
           key={i}
-          className={`w-4 h-4 ${i <= value ? 'text-amber-400' : 'text-stone-700'}`}
+          className={`w-4 h-4 ${i <= Math.round(value) ? 'text-amber-400' : 'text-stone-700'}`}
           fill="currentColor"
           viewBox="0 0 20 20"
         >
@@ -25,35 +25,31 @@ export default function ProdutoDetalhe() {
   const navigate = useNavigate()
 
   const [produto, setProduto] = useState<Produto | null>(null)
+  const [preco, setPreco] = useState<{ preco_medio: number | null; total_vendas: number; preco_min: number | null; preco_max: number | null } | null>(null)
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([])
-  const [itens, setItens] = useState<ItemPedido[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const [mediaAval, setMediaAval] = useState<number | null>(null)
 
   useEffect(() => {
     if (!id) return
+    setLoading(true)
     Promise.all([
       getProduto(id),
-      getAvaliacoes(1000, 0),
-      getItens(1000, 0),
-    ]).then(([p, avs, its]) => {
+      getPrecoProduto(id),
+      getAvaliacoesProduto(id),
+    ]).then(([p, pr, avs]) => {
       setProduto(p)
-      setAvaliacoes(avs.filter(a => {
-        // filtramos via itens do pedido
-        const pedidoIds = its.filter(i => i.id_produto === id).map(i => i.id_pedido)
-        return pedidoIds.includes(a.id_pedido)
-      }))
-      setItens(its.filter(i => i.id_produto === id))
-    }).catch(() => {}).finally(() => setLoading(false))
+      setPreco(pr)
+      setAvaliacoes(avs)
+      if (avs.length > 0) {
+        setMediaAval(avs.reduce((sum, a) => sum + a.avaliacao, 0) / avs.length)
+      }
+    }).catch(() => {
+      setProduto(null)
+    }).finally(() => setLoading(false))
   }, [id])
-
-  const mediaAvaliacoes = avaliacoes.length > 0
-    ? avaliacoes.reduce((sum, a) => sum + a.avaliacao, 0) / avaliacoes.length
-    : null
-
-  const totalVendas = itens.length
-  const receitaTotal = itens.reduce((sum, i) => sum + i.preco_BRL, 0)
 
   async function handleDelete() {
     if (!produto) return
@@ -101,9 +97,9 @@ export default function ProdutoDetalhe() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Imagem */}
           <div className="rounded-2xl overflow-hidden bg-stone-900 border border-stone-800 aspect-square flex items-center justify-center">
-            {produto.link_imagem && !imgError ? (
+            {produto.imagem_url && !imgError ? (
               <img
-                src={produto.link_imagem}
+                src={produto.imagem_url}
                 alt={produto.nome_produto}
                 className="w-full h-full object-cover"
                 onError={() => setImgError(true)}
@@ -130,29 +126,40 @@ export default function ProdutoDetalhe() {
               <p className="mt-2 text-stone-500 font-mono text-xs">ID: {produto.id_produto}</p>
             </div>
 
+            {/* Preço destaque */}
+            {preco?.preco_medio && (
+              <div className="bg-stone-900 border border-amber-400/20 rounded-xl p-5">
+                <p className="text-stone-500 text-xs mb-1">Preço médio de venda</p>
+                <p className="text-amber-400 text-3xl font-bold">
+                  {preco.preco_medio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+                {preco.preco_min !== preco.preco_max && (
+                  <p className="text-stone-500 text-xs mt-1">
+                    Min: {preco.preco_min?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} ·
+                    Max: {preco.preco_max?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="bg-stone-900 border border-stone-800 rounded-xl p-4">
-                <p className="text-stone-500 text-xs mb-1">Avaliação</p>
-                {mediaAvaliacoes !== null ? (
+                <p className="text-stone-500 text-xs mb-1">Avaliação média</p>
+                {mediaAval !== null ? (
                   <>
-                    <p className="text-white text-2xl font-bold">{mediaAvaliacoes.toFixed(1)}</p>
-                    <StarRating value={Math.round(mediaAvaliacoes)} />
+                    <p className="text-white text-2xl font-bold">{mediaAval.toFixed(1)}</p>
+                    <StarRating value={mediaAval} />
+                    <p className="text-stone-600 text-xs mt-1">{avaliacoes.length} avaliações</p>
                   </>
                 ) : (
-                  <p className="text-stone-600 text-sm">Sem dados</p>
+                  <p className="text-stone-600 text-sm mt-1">Sem avaliações</p>
                 )}
               </div>
               <div className="bg-stone-900 border border-stone-800 rounded-xl p-4">
-                <p className="text-stone-500 text-xs mb-1">Vendas</p>
-                <p className="text-white text-2xl font-bold">{totalVendas}</p>
+                <p className="text-stone-500 text-xs mb-1">Total vendido</p>
+                <p className="text-white text-2xl font-bold">{preco?.total_vendas ?? 0}</p>
                 <p className="text-stone-600 text-xs">pedidos</p>
-              </div>
-              <div className="bg-stone-900 border border-stone-800 rounded-xl p-4">
-                <p className="text-stone-500 text-xs mb-1">Receita</p>
-                <p className="text-amber-400 text-xl font-bold">
-                  {receitaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
               </div>
             </div>
 

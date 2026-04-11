@@ -2,14 +2,6 @@ import type { Produto, ProdutoUpdate, Avaliacao, ItemPedido } from '../types'
 
 const BASE_URL = 'http://localhost:8000'
 
-export const getPrecoProduto = (id: string) =>
-  request<{
-    preco_medio: number | null
-    preco_min: number | null
-    preco_max: number | null
-    total_vendas: number
-  }>(`/produtos/${id}/preco`)
-
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -19,6 +11,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+// Produtos
 export const getProdutos = (limit = 20, offset = 0) =>
   request<Produto[]>(`/produtos?limit=${limit}&offset=${offset}`)
 
@@ -34,10 +27,23 @@ export const updateProduto = (id: string, dados: ProdutoUpdate) =>
 export const deleteProduto = (id: string) =>
   request(`/produtos/${id}`, { method: 'DELETE' })
 
-// Avaliações
-export const getAvaliacoes = (limit = 100, offset = 0) =>
+// Preço e vendas do produto (join no backend)
+export const getPrecoProduto = (id: string) =>
+  request<{
+    preco_medio: number | null
+    preco_min: number | null
+    preco_max: number | null
+    total_vendas: number
+  }>(`/produtos/${id}/preco`)
+
+// Avaliações de um produto específico
+export const getAvaliacoesProduto = (id: string) =>
+  request<Avaliacao[]>(`/produtos/${id}/avaliacoes`)
+
+// Avaliações gerais
+export const getAvaliacoes = (limit = 20, offset = 0) =>
   request<Avaliacao[]>(`/avaliacoes?limit=${limit}&offset=${offset}`)
 
 // Itens
-export const getItens = (limit = 100, offset = 0) =>
+export const getItens = (limit = 20, offset = 0) =>
   request<ItemPedido[]>(`/itens?limit=${limit}&offset=${offset}`)
