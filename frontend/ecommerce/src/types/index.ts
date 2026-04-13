@@ -38,3 +38,7 @@ export interface ItemPedido {
   preco_BRL: number
   preco_frete: number
 }
+
+export interface CartItem extends Produto {
+  quantidade: number;
+}
