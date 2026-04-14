@@ -16,10 +16,7 @@ const DebitoIcon = () => (
   </svg>
 )
 const PixIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4}>
-    <path strokeLinecap="round" strokeLinejoin="round"
-      d="M7.5 4.5l4.5 4.5 4.5-4.5M16.5 19.5L12 15l-4.5 4.5M4.5 7.5L9 12l-4.5 4.5M19.5 16.5L15 12l4.5-4.5" />
-  </svg>
+  <i className="fa-brands fa-pix"></i>
 )
 const DinheiroIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.4}>
@@ -36,11 +33,11 @@ const VoucherIcon = () => (
 )
 
 const metodoIconMap: Record<string, React.ReactNode> = {
-  credito:  <CreditoIcon />,
-  debito:   <DebitoIcon />,
-  pix:      <PixIcon />,
+  credito: <CreditoIcon />,
+  debito: <DebitoIcon />,
+  pix: <PixIcon />,
   dinheiro: <DinheiroIcon />,
-  voucher:  <VoucherIcon />,
+  voucher: <VoucherIcon />,
 }
 
 // ─── Barcode decorativo ───────────────────────────────────────────────────────
@@ -85,31 +82,34 @@ export default function Comprovante() {
     parcelas?: number
     ultimos4?: string
     numeroPedido?: string
+    valorTotal?: number
+    itensNoPedido?: any[]
   } | null
 
-  const metodoPagamento  = state?.metodoPagamento  ?? 'Cartão de Crédito'
-  const metodoId         = state?.metodoId         ?? 'credito'
-  const parcelas         = state?.parcelas         ?? 1
-  const ultimos4         = state?.ultimos4         ?? '0000'
-  const numeroPedido     = state?.numeroPedido     ?? `MP-${Date.now().toString().slice(-8)}`
+  const metodoPagamento = state?.metodoPagamento ?? 'Cartão de Crédito'
+  const metodoId = state?.metodoId ?? 'credito'
+  const parcelas = state?.parcelas ?? 1
+  const ultimos4 = state?.ultimos4 ?? '0000'
+  const numeroPedido = state?.numeroPedido ?? `MP-${Date.now().toString().slice(-8)}`
 
   const now = new Date()
   const dataFormatada = now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
   const horaFormatada = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-  const subtotal   = cart.reduce((acc, item) => acc + (item.preco_medio || 0) * item.quantidade, 0)
-  const totalItens = cart.reduce((acc, item) => acc + item.quantidade, 0)
+  const subtotal = state?.valorTotal ?? 0
+  const itensExibicao = state?.itensNoPedido ?? []
+  const totalItens = itensExibicao.reduce((acc, item) => acc + item.quantidade, 0)
 
   const codigoAutorizacao = `AUTH-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
   const nsu = numeroPedido.replace('MP-', '').slice(-6)
 
   // Detalhe do pagamento (linha secundária)
   const detalhePagamento = (() => {
-    if (metodoId === 'pix')      return 'Pix — aprovação instantânea'
+    if (metodoId === 'pix') return 'Pix — aprovação instantânea'
     if (metodoId === 'dinheiro') return 'Dinheiro — pagamento em espécie'
-    if (metodoId === 'voucher')  return 'Voucher — vale refeição/alimentação'
+    if (metodoId === 'voucher') return 'Voucher — vale refeição/alimentação'
     const sufixo = ultimos4 !== '0000' ? ` •••• ${ultimos4}` : ''
-    const part   = parcelas > 1 ? ` · ${parcelas}× sem juros` : ''
+    const part = parcelas > 1 ? ` · ${parcelas}× sem juros` : ''
     return `${sufixo}${part}`
   })()
 
@@ -122,7 +122,6 @@ export default function Comprovante() {
     <div className="min-h-screen bg-[#0C0A08] pt-16 pb-12 flex items-start justify-center px-4">
       <div className="w-full max-w-lg mt-10">
 
-        {/* Ações externas */}
         <div className="flex items-center justify-between mb-5">
           <span className="text-stone-600 text-xs font-mono">{dataFormatada} · {horaFormatada}</span>
           <div className="flex gap-2">
@@ -177,9 +176,9 @@ export default function Comprovante() {
             <p className="text-[10px] font-medium text-stone-600 uppercase tracking-[0.16em] mb-4">Dados do pedido</p>
             <div className="grid grid-cols-2 gap-y-4">
               {[
-                { label: 'Loja',     value: 'Loja Principal' },
-                { label: 'Canal',    value: 'MercadoPro' },
-                { label: 'Cliente',  value: 'Balcão / PDV' },
+                { label: 'Loja', value: 'Loja Principal' },
+                { label: 'Canal', value: 'MercadoPro' },
+                { label: 'Cliente', value: 'Balcão / PDV' },
                 { label: 'Operador', value: 'Admin' },
               ].map(({ label, value }) => (
                 <div key={label}>

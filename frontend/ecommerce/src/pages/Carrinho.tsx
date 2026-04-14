@@ -62,11 +62,11 @@ const VoucherIcon = () => (
 )
 
 const METODOS: Metodo[] = [
-  { id: 'credito',  label: 'Crédito',  descricao: 'Parcelamento disponível',    icon: <CreditoIcon />, temParcelas: true, temDigitos: true },
-  { id: 'debito',   label: 'Débito',   descricao: 'Aprovação imediata',          icon: <DebitoIcon />,  temDigitos: true },
-  { id: 'pix',      label: 'Pix',      descricao: 'Transferência instantânea',   icon: <PixIcon /> },
-  { id: 'dinheiro', label: 'Dinheiro', descricao: 'Pagamento em espécie',        icon: <DinheiroIcon /> },
-  { id: 'voucher',  label: 'Voucher',  descricao: 'Vale-alimentação / refeição', icon: <VoucherIcon /> },
+  { id: 'credito', label: 'Crédito', descricao: 'Parcelamento disponível', icon: <CreditoIcon />, temParcelas: true, temDigitos: true },
+  { id: 'debito', label: 'Débito', descricao: 'Aprovação imediata', icon: <DebitoIcon />, temDigitos: true },
+  { id: 'pix', label: 'Pix', descricao: 'Transferência instantânea', icon: <PixIcon /> },
+  { id: 'dinheiro', label: 'Dinheiro', descricao: 'Pagamento em espécie', icon: <DinheiroIcon /> },
+  { id: 'voucher', label: 'Voucher', descricao: 'Vale-alimentação / refeição', icon: <VoucherIcon /> },
 ]
 
 const PARCELAS = [1, 2, 3, 4, 5, 6, 10, 12]
@@ -89,25 +89,27 @@ export default function Carrinho() {
 
   function handleFinalizar() {
     setFinalizando(true)
-    /*Carrinho deve estar sem nenhum item */
     if (cart.length === 0) {
       showToast('O carrinho está vazio!', { type: 'error' })
       setFinalizando(false)
       return
     }
 
+    // Captura os dados antes de limpar o carrinho
+    const dadosFinalizacao = {
+      metodoPagamento: metodoAtual.label,
+      metodoId: metodoAtual.id,
+      parcelas,
+      ultimos4: ultimos4 || '0000',
+      numeroPedido: `MP-${Date.now().toString().slice(-8)}`,
+      valorTotal: totalGeral, // Envia o total calculado
+      itensNoPedido: [...cart] // Envia uma cópia dos itens
+    }
+
     setTimeout(() => {
       showToast('Venda finalizada com sucesso!', { type: 'success' })
-      cart.forEach(item => removeFromCart(item.id_produto))
-      navigate('/comprovante', {
-        state: {
-          metodoPagamento: metodoAtual.label,
-          metodoId: metodoAtual.id,
-          parcelas,
-          ultimos4: ultimos4 || '0000',
-          numeroPedido: `MP-${Date.now().toString().slice(-8)}`,
-        }
-      })
+      clearCart() // Agora pode limpar o carrinho
+      navigate('/comprovante', { state: dadosFinalizacao })
     }, 800)
   }
 
@@ -205,9 +207,9 @@ export default function Carrinho() {
                     onClick={() => { setMetodoSelecionado(m.id); setParcelas(1) }}
                     className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200
                                 ${metodoSelecionado === m.id
-                                  ? 'border-amber-400/50 bg-amber-400/5 text-amber-400'
-                                  : 'border-stone-800 text-stone-500 hover:border-stone-700 hover:text-stone-300'
-                                }`}
+                        ? 'border-amber-400/50 bg-amber-400/5 text-amber-400'
+                        : 'border-stone-800 text-stone-500 hover:border-stone-700 hover:text-stone-300'
+                      }`}
                   >
                     {m.icon}
                     <span className="text-[10px] font-medium">{m.label}</span>
@@ -254,9 +256,9 @@ export default function Carrinho() {
                           <button key={n} onClick={() => setParcelas(n)}
                             className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-mono transition-all duration-150
                                         ${parcelas === n
-                                          ? 'border-amber-400/50 bg-amber-400/10 text-amber-400'
-                                          : 'border-stone-700 text-stone-500 hover:border-stone-600 hover:text-stone-300'
-                                        }`}
+                                ? 'border-amber-400/50 bg-amber-400/10 text-amber-400'
+                                : 'border-stone-700 text-stone-500 hover:border-stone-600 hover:text-stone-300'
+                              }`}
                           >
                             {n}× {val}
                           </button>
