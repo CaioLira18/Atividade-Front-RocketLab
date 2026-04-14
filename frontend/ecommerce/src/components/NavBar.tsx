@@ -44,7 +44,7 @@ export default function Navbar() {
             <HexLogo />
           </div>
           <span className="text-stone-100 font-medium tracking-tight text-base leading-none">
-            Mercado<span className="text-amber-400">Pro</span>
+            Ecommerce<span className="text-amber-400"> RocketLab</span>
           </span>
         </Link>
 

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getProduto, getPrecoProduto, getAvaliacoesProduto, deleteProduto } from '../services/api'
 import type { Produto, Avaliacao } from '../types'
 import { useCart } from '../components/CartContext'
+import { useToast } from '../components/ToastContext'
 
 function StarRating({ value }: { value: number }) {
   return (
@@ -36,6 +37,7 @@ export default function ProdutoDetalhe() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { addToCart } = useCart()
+  const { showToast } = useToast()
 
   const [produto, setProduto] = useState<Produto | null>(null)
   const [preco, setPreco] = useState<{
@@ -49,6 +51,7 @@ export default function ProdutoDetalhe() {
   const [deleting, setDeleting] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [mediaAval, setMediaAval] = useState<number | null>(null)
+  const [added, setAdded] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -67,14 +70,16 @@ export default function ProdutoDetalhe() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // FUNÇÃO CORRIGIDA: Anexa o preço ao produto antes de enviar para o carrinho
   const handleAddToCart = () => {
     if (!produto) return
-    const produtoComPreco = {
-      ...produto,
-      preco_medio: preco?.preco_medio || 0 // Pega o valor que já aparece no detalhe
-    }
-    addToCart(produtoComPreco)
+    addToCart({ ...produto, preco_medio: preco?.preco_medio || 0 })
+    setAdded(true)
+    setTimeout(() => setAdded(false), 2000)
+    showToast('Adicionado ao carrinho', {
+      type: 'success',
+      productName: produto.nome_produto,
+      imageUrl: produto.imagem_url ?? undefined,
+    })
   }
 
   async function handleDelete() {
@@ -119,7 +124,6 @@ export default function ProdutoDetalhe() {
   return (
     <div className="min-h-screen bg-[#0C0A08] pt-16">
       <div className="max-w-6xl mx-auto px-6 py-10">
-
         <nav className="flex items-center gap-2 text-xs text-stone-600 mb-10">
           <Link to="/" className="hover:text-amber-400 transition-colors duration-150">Catálogo</Link>
           <span>/</span>
@@ -128,24 +132,14 @@ export default function ProdutoDetalhe() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
           <div className="rounded-2xl overflow-hidden bg-stone-900 border border-stone-800 aspect-square flex items-center justify-center relative">
-          
-            <script>
-              console.log("imagem_url:", {produto.imagem_url});
-            </script>
-
             {produto.imagem_url ? (
               <img
                 src={produto.imagem_url}
                 alt={produto.nome_produto}
                 className={`w-full h-full object-cover transition-opacity duration-300 ${imgError ? 'opacity-0' : 'opacity-100'}`}
-                onError={(e) => {
-                  console.error("Erro ao carregar imagem:", produto.imagem_url);
-                  setImgError(true);
-                }}
+                onError={() => setImgError(true)}
               />
             ) : null}
-
-            {/* Se não houver URL OU se der erro no carregamento, mostra o ícone */}
             {(!produto.imagem_url || imgError) && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-stone-700 bg-stone-900">
                 <BoxIcon />
@@ -171,6 +165,11 @@ export default function ProdutoDetalhe() {
                 <p className="text-amber-400 text-3xl font-medium font-mono tracking-tight">
                   {preco.preco_medio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
+                {preco.preco_min !== preco.preco_max && preco.preco_min && preco.preco_max && (
+                  <p className="text-stone-600 text-xs mt-2 font-mono">
+                    Min: {preco.preco_min.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} · Max: {preco.preco_max.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                )}
               </div>
             )}
 
@@ -181,6 +180,7 @@ export default function ProdutoDetalhe() {
                   <>
                     <p className="text-stone-100 text-2xl font-medium font-mono">{mediaAval.toFixed(1)}</p>
                     <div className="mt-1.5"><StarRating value={mediaAval} /></div>
+                    <p className="text-stone-700 text-[11px] mt-1.5">{avaliacoes.length} avaliações</p>
                   </>
                 ) : (
                   <p className="text-stone-700 text-sm mt-1">Sem avaliações</p>
@@ -198,13 +198,9 @@ export default function ProdutoDetalhe() {
               <div className="grid grid-cols-2 gap-0">
                 {specs.map(({ label, value }, i) => (
                   <div key={label}
-                    className={`flex justify-between items-center py-2.5 text-sm
-                                ${i < specs.length - 2 ? 'border-b border-stone-800' : ''}
-                                ${i % 2 === 0 ? 'pr-4 border-r border-stone-800' : 'pl-4'}`}>
+                    className={`flex justify-between items-center py-2.5 text-sm ${i < specs.length - 2 ? 'border-b border-stone-800' : ''} ${i % 2 === 0 ? 'pr-4 border-r border-stone-800' : 'pl-4'}`}>
                     <span className="text-stone-600 text-xs">{label}</span>
-                    <span className={`text-xs font-mono font-medium ${value ? 'text-stone-200' : 'text-stone-700'}`}>
-                      {value ?? '—'}
-                    </span>
+                    <span className={`text-xs font-mono font-medium ${value ? 'text-stone-200' : 'text-stone-700'}`}>{value ?? '—'}</span>
                   </div>
                 ))}
               </div>
@@ -213,12 +209,23 @@ export default function ProdutoDetalhe() {
             <div className="flex flex-col gap-2.5">
               <button
                 onClick={handleAddToCart}
-                className="w-full py-3.5 bg-amber-400 text-stone-950 text-sm font-medium rounded-xl hover:bg-amber-300 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2"
+                className={`w-full py-3.5 text-sm font-medium rounded-xl active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 ${added ? 'bg-green-500 text-white' : 'bg-amber-400 text-stone-950 hover:bg-amber-300'}`}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Adicionar ao Carrinho
+                {added ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Adicionado!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Adicionar ao Carrinho
+                  </>
+                )}
               </button>
 
               <div className="flex gap-2.5">
@@ -242,12 +249,18 @@ export default function ProdutoDetalhe() {
 
         {avaliacoes.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-lg font-medium text-stone-100 mb-6">Avaliações</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-lg font-medium text-stone-100">Avaliações</h2>
+              <span className="px-2 py-0.5 bg-stone-900 border border-stone-800 text-stone-500 text-xs rounded-md font-mono">{avaliacoes.length}</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {avaliacoes.slice(0, 10).map(av => (
                 <div key={av.id_avaliacao} className="bg-stone-900 border border-stone-800 rounded-xl p-5 hover:border-stone-700 transition-colors">
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <StarRating value={av.avaliacao} />
+                    {av.data_comentario && (
+                      <span className="text-stone-700 text-[11px] font-mono shrink-0">{new Date(av.data_comentario).toLocaleDateString('pt-BR')}</span>
+                    )}
                   </div>
                   {av.titulo_comentario && <p className="text-stone-200 text-sm font-medium mb-1.5">{av.titulo_comentario}</p>}
                   {av.comentario && <p className="text-stone-500 text-sm leading-relaxed">{av.comentario}</p>}
