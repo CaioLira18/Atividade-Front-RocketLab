@@ -39,12 +39,11 @@ export default function Navbar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 bg-stone-900 border border-stone-800 rounded-lg
-                          flex items-center justify-center
-                          group-hover:border-amber-400/30 transition-colors duration-200">
-            <HexLogo />
+          flex items-center justify-center group-hover:border-amber-400/30 transition-colors duration-200">
+            <i className="fa-solid fa-cart-shopping"></i>
           </div>
           <span className="text-stone-100 font-medium tracking-tight text-base leading-none">
-            Ecommerce<span className="text-amber-400"> RocketLab</span>
+            Ecommerce RocketLab
           </span>
         </Link>
 
@@ -62,9 +61,9 @@ export default function Navbar() {
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium
                               transition-all duration-200
                               ${active
-                                ? 'bg-amber-400 text-stone-950'
-                                : 'text-stone-500 hover:text-stone-200 hover:bg-stone-900'
-                              }`}
+                      ? 'bg-white text-stone-950'
+                      : 'text-stone-500 hover:text-stone-200 hover:bg-stone-900'
+                    }`}
                 >
                   {icon && (
                     <span className={active ? 'text-stone-950' : 'text-stone-600'}>
@@ -86,9 +85,9 @@ export default function Navbar() {
             className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium
                         transition-all duration-200 group
                         ${pathname === '/carrinho'
-                          ? 'bg-stone-800 text-stone-100'
-                          : 'text-stone-500 hover:text-stone-200 hover:bg-stone-900'
-                        }`}
+                ? 'bg-stone-800 text-stone-100'
+                : 'text-stone-500 hover:text-stone-200 hover:bg-stone-900'
+              }`}
           >
             <span className="group-hover:text-amber-400 transition-colors duration-150">
               <CartIcon />

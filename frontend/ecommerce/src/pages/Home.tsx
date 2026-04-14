@@ -85,14 +85,6 @@ export default function Home() {
       {/* Hero / Header */}
       <div className="border-b border-stone-900 bg-[#0C0A08]/95 backdrop-blur-md sticky top-16 z-10">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-3">
-            <HexLogo />
-            <span className="text-amber-400 text-[11px] font-medium tracking-[0.18em] uppercase">
-              Painel do Gerente
-            </span>
-          </div>
-
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-medium text-stone-50 tracking-tight leading-none">

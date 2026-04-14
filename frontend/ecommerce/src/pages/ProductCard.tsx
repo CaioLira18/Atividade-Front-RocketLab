@@ -83,11 +83,7 @@ export default function ProductCard({ produto }: Props) {
                          group-hover:text-amber-400 transition-colors duration-200">
             {produto.nome_produto}
           </h3>
-          {produto.peso_produto_gramas && (
-            <p className="mt-1 text-stone-600 text-xs">
-              {produto.peso_produto_gramas}g
-            </p>
-          )}
+          
         </div>
 
         {/* Rodapé */}
